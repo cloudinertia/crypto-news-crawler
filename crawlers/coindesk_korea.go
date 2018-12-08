@@ -1,11 +1,14 @@
 package Coindesk_korea
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -32,18 +35,25 @@ func Coindesk_korea_scrape_page(page int) {
 	}
 
 	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	var result map[string]interface{} // result => {"paged":x, "end_paged":y, "posts":"blabal"}
+	body, err2 := ioutil.ReadAll(res.Body)
+	if err2 != nil {
+		return
+	}
+	json.Unmarshal([]byte(body), &result)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(result["posts"].(string)))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
-		src, ok := s.Attr("src")
+	doc.Find(".title-mata").Each(func(i int, s *goquery.Selection) {
+		title := s.Find(".tax_title a").Text()
+		link, ok := s.Find(".tax_title a").Attr("href")
+		published := s.Find(".published").Text()
 		if !ok {
-			fmt.Printf("not fine")
+			fmt.Printf("not fine\n")
 			return
 		}
-		fmt.Printf("iimg %d: %s\n", i, src)
+		fmt.Printf("title:%s, link:%s, published:%s\n", title, link, published)
 	})
 }
 func Coindesk_korea_scrape_range(start_page int, end_page int) {
